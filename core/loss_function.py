@@ -14,11 +14,11 @@ class HeuristicLoss(nn.Module):
     def forward(self, image_initial, image_modified, text_embeds_target):
         """
         Inputs:
-        image_initial: Original image from VAE
-        image_modified: Modified image from VAE
+        image_initial: Original image from VAE (processed for CLIP)
+        image_modified: Modified image from VAE (processed for CLIP)
         text_embeds_target: CLIP embedding of the target text ("with glasses")
         
-        Output: a single loss value
+        Output: a single loss value and its components
         """
         image_initial_embeds = self.clip_model.get_image_features(pixel_values=image_initial)
         image_modified_embeds = self.clip_model.get_image_features(pixel_values=image_modified)

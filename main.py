@@ -15,16 +15,8 @@ if __name__ == '__main__':
     
     print("\n--- Starting the training loop ---")
     
-    # Check for existing checkpoint
     if os.path.exists("auxiliary_network_weights.pth"):
-        print("Found existing model weights. Loading model...")
-        aux_net = AuxiliaryNetwork().to(device)
-        aux_net.load_state_dict(torch.load("auxiliary_network_weights.pth"))
-        aux_net = aux_net.to(torch.float16)
-        aux_net.eval()
-        
-        print("\n--- Model loaded. You can now use it for inference or continue training. ---")
-        
+        print("Found existing model weights. You can now use it for inference or continue training.")
     else:
         train_auxiliary_network(vae, clip_model, clip_processor, num_epochs=1000)
         print("\n--- Training complete ---")

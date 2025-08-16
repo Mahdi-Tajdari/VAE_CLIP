@@ -69,7 +69,6 @@ def train_auxiliary_network(vae, clip_model, clip_processor, num_epochs=1000, im
         if (epoch + 1) % 10 == 0:
             print(f"Epoch [{epoch+1}/{num_epochs}] | Total Loss: {total_loss.item():.4f} | Feature Loss: {feature_loss.item():.4f} | Identity Loss: {identity_loss.item():.4f}")
         
-        # Save model checkpoint after each epoch
         if (epoch + 1) % 50 == 0:
             torch.save({
                 'epoch': epoch + 1,
@@ -79,6 +78,6 @@ def train_auxiliary_network(vae, clip_model, clip_processor, num_epochs=1000, im
                 }, f"checkpoint_epoch_{epoch+1}.pth")
             print(f"Checkpoint saved at epoch {epoch+1}")
     
-    print("آموزش به پایان رسید.")
+    print("Training finished.")
     
     torch.save(aux_net.state_dict(), "auxiliary_network_weights.pth")

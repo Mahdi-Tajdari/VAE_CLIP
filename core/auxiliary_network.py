@@ -1,33 +1,36 @@
+# core/auxiliary_network.py
 import torch
 import torch.nn as nn
 
+class ResBlock(nn.Module):
+    def __init__(self, ch):
+        super().__init__()
+        self.block = nn.Sequential(
+            nn.Conv2d(ch, ch, 3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(ch, ch, 3, padding=1),
+        )
+        self.act = nn.ReLU(inplace=True)
+
+    def forward(self, x):
+        return self.act(x + self.block(x))
+
 class AuxiliaryNetwork(nn.Module):
     """
-    A more complex neural network to find the disentangled latent direction.
+    Predicts a delta in latent space with same shape as z (B, 4, H, W).
     """
-    def __init__(self, latent_dim=4 * 64 * 64, hidden_dim=1024):
+    def __init__(self, in_ch=4, base_ch=64, n_blocks=4, out_scale=0.15):
         super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(latent_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim // 2),
-            nn.ReLU(),
-            nn.Linear(hidden_dim // 2, hidden_dim // 4),
-            nn.ReLU(),
-            nn.Linear(hidden_dim // 4, latent_dim),
-            nn.Tanh()
+        self.stem = nn.Sequential(
+            nn.Conv2d(in_ch, base_ch, 3, padding=1),
+            nn.ReLU(inplace=True),
         )
-        
-    def forward(self, latent_vector):
-        """
-        Input: latent_vector (a 4D tensor)
-        Output: a small delta_vector (a 4D tensor)
-        """
-        batch_size = latent_vector.shape[0]
-        flattened_vector = latent_vector.view(batch_size, -1)
-        
-        delta_flattened = self.net(flattened_vector)
-        
-        delta_vector = delta_flattened.view(latent_vector.shape)
-        
-        return delta_vector
+        self.body = nn.Sequential(*[ResBlock(base_ch) for _ in range(n_blocks)])
+        self.head = nn.Conv2d(base_ch, in_ch, 3, padding=1)
+        self.out_scale = out_scale
+
+    def forward(self, z):
+        h = self.stem(z)
+        h = self.body(h)
+        dz = self.head(h)
+        return torch.tanh(dz) * self.out_scale

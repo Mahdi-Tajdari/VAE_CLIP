@@ -18,7 +18,7 @@ if __name__ == "__main__":
         num_epochs=100,          # کل ایپاک‌ها
         steps_per_epoch=50,     # هر ایپاک چند آپدیت بزنه
         lr=1e-4,
-        log_every=10,
-        ckpt_every=20,
+        log_every=1,
+        ckpt_every=5,
         device=device
     )

@@ -1,3 +1,4 @@
 *.pth
 disentangling-vae
 dataset
+inference_samples/*

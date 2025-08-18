@@ -19,7 +19,7 @@ class AuxiliaryNetwork(nn.Module):
     """
     Predicts a delta in latent space with same shape as z (B, 4, H, W).
     """
-    def __init__(self, in_ch=4, base_ch=64, n_blocks=4, out_scale=0.15):
+    def __init__(self, in_ch=4, base_ch=64, n_blocks=4, out_scale=2.0):  # Changed to 2.0
         super().__init__()
         self.stem = nn.Sequential(
             nn.Conv2d(in_ch, base_ch, 3, padding=1),
@@ -33,4 +33,6 @@ class AuxiliaryNetwork(nn.Module):
         h = self.stem(z)
         h = self.body(h)
         dz = self.head(h)
-        return torch.tanh(dz) * self.out_scale
+        dz_debug = torch.tanh(dz) * self.out_scale  # Debug output
+        print(f"dz shape: {dz.shape}, dz mean: {dz_debug.mean().item():.4f}, dz max: {dz_debug.max().item():.4f}")
+        return dz_debug

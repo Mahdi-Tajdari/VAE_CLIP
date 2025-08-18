@@ -1,3 +1,4 @@
+
 import os
 import glob
 import random
@@ -15,7 +16,6 @@ from core.loss_function import HeuristicLoss
 # ------------------------
 CLIP_MEAN = (0.48145466, 0.4578275, 0.40821073)
 CLIP_STD  = (0.26862954, 0.26130258, 0.27577711)
-SD_SCALE  = 0.18215
 
 def preprocess_for_clip(x: torch.Tensor) -> torch.Tensor:
     """
@@ -29,7 +29,7 @@ def preprocess_for_clip(x: torch.Tensor) -> torch.Tensor:
     x = (x - mean) / std
     return x
 
-def load_random_image(image_paths, size=512, device="cuda"):
+def load_random_image(image_paths, size=128, device="cuda"):
     """یک عکس رندوم می‌خونه و به [-1,1] تبدیل می‌کنه"""
     path = random.choice(image_paths)
     img = read_image(path)  # uint8 [0,255]
@@ -64,7 +64,7 @@ def train_auxiliary_network(
     print(f"Found {len(image_paths)} images. Using random sampling each step.")
 
     # مدل‌ها
-    aux_net = AuxiliaryNetwork().to(device)
+    aux_net = AuxiliaryNetwork(latent_dim=256).to(device)
     optimizer = Adam(aux_net.parameters(), lr=lr)
     criterion = HeuristicLoss(clip_model).to(device)
 
@@ -84,26 +84,25 @@ def train_auxiliary_network(
 
     for epoch in range(1, num_epochs + 1):
         for step in range(steps_per_epoch):
-            imgs = load_random_image(image_paths, size=512, device=device)
+            imgs = load_random_image(image_paths, size=128, device=device)
 
             # encode → latent space
             with torch.no_grad():
-                posterior = vae.encode(imgs)
-                z = posterior.latent_dist.sample() * SD_SCALE
+                z, _ = vae.encode(imgs)  # z: [B, 256]
 
             # auxnet → delta z
             dz = aux_net(z)
             z_prime = z + dz
 
-            # decode
-            img_init = vae.decode(z / SD_SCALE).sample.float()
-            img_edit = vae.decode(z_prime / SD_SCALE).sample.float()
+            # decode (بدون no_grad برای گرادیان)
+            img_init = vae.decode(z).float()
+            img_edit = vae.decode(z_prime).float()
 
             # برای CLIP آماده کن
             im_init_clip = preprocess_for_clip(img_init)
             im_edit_clip = preprocess_for_clip(img_edit)
 
-            # لا‌س
+            # لاس
             total_loss, feature_loss, identity_loss = criterion(
                 im_init_clip, im_edit_clip, text_embeds_target, alpha=0.9
             )
@@ -132,15 +131,14 @@ def train_auxiliary_network(
             }, ckpt_path)
             print(f"Checkpoint saved at {ckpt_path}")
 
-            # اینفرنس
+            # اینفرنس (با no_grad)
             with torch.no_grad():
-                test_img = load_random_image(image_paths, size=512, device=device)
-                posterior = vae.encode(test_img)
-                z = posterior.latent_dist.sample() * SD_SCALE
+                test_img = load_random_image(image_paths, size=128, device=device)
+                z, _ = vae.encode(test_img)
                 dz = aux_net(z)
                 z_prime = z + dz
-                img_init = vae.decode(z / SD_SCALE).sample.float()
-                img_edit = vae.decode(z_prime / SD_SCALE).sample.float()
+                img_init = vae.decode(z).float()
+                img_edit = vae.decode(z_prime).float()
 
                 from torchvision.utils import save_image
                 save_image((img_init + 1) / 2, f"inference_samples/original_epoch_{epoch}.png")

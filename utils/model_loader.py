@@ -1,19 +1,20 @@
-# utils/model_loader.py
+
 import torch
 from transformers import CLIPProcessor, CLIPModel
-from diffusers import AutoencoderKL
+from core.models import DisentanglingVAE  # مسیر درست
 
 def load_vae_and_clip_models(device):
     print("Loading VAE and CLIP models...")
 
-    # Keep in fp32 for stable grads through decode (we're not training VAE)
-    vae = AutoencoderKL.from_pretrained("stabilityai/sd-vae-ft-mse", torch_dtype=torch.float32).to(device)
+    # لود DisentanglingVAE (وزن‌ها اختیاری)
+    vae = DisentanglingVAE(latent_dim=256).to(device)
+    # اگه وزن‌های پیش‌آموزش‌دیده دارید، خط زیر رو فعال کنید
+    # vae.load_state_dict(torch.load("results/experiment/vae_pretrained.pth", map_location=device))
     vae.eval()
 
     clip_model = CLIPModel.from_pretrained("openai/clip-vit-large-patch14").to(device)
     clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-large-patch14")
     clip_model.eval()
-    # Freeze params (but keep graph through ops)
     for p in clip_model.parameters():
         p.requires_grad = False
 

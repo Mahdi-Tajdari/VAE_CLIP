@@ -1,36 +1,21 @@
-# core/auxiliary_network.py
 import torch
 import torch.nn as nn
 
-class ResBlock(nn.Module):
-    def __init__(self, ch):
-        super().__init__()
-        self.block = nn.Sequential(
-            nn.Conv2d(ch, ch, 3, padding=1),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(ch, ch, 3, padding=1),
-        )
-        self.act = nn.ReLU(inplace=True)
-
-    def forward(self, x):
-        return self.act(x + self.block(x))
-
 class AuxiliaryNetwork(nn.Module):
     """
-    Predicts a delta in latent space with same shape as z (B, 4, H, W).
+    Predicts a delta in latent space with same shape as z (B, 256).
     """
-    def __init__(self, in_ch=4, base_ch=64, n_blocks=4, out_scale=0.15):
+    def __init__(self, latent_dim=256, out_scale=0.15):
         super().__init__()
-        self.stem = nn.Sequential(
-            nn.Conv2d(in_ch, base_ch, 3, padding=1),
-            nn.ReLU(inplace=True),
+        self.net = nn.Sequential(
+            nn.Linear(latent_dim, 512),
+            nn.ReLU(),
+            nn.Linear(512, 256),
+            nn.ReLU(),
+            nn.Linear(256, latent_dim),
+            nn.Tanh()
         )
-        self.body = nn.Sequential(*[ResBlock(base_ch) for _ in range(n_blocks)])
-        self.head = nn.Conv2d(base_ch, in_ch, 3, padding=1)
         self.out_scale = out_scale
 
     def forward(self, z):
-        h = self.stem(z)
-        h = self.body(h)
-        dz = self.head(h)
-        return torch.tanh(dz) * self.out_scale
+        return self.net(z) * self.out_scale
